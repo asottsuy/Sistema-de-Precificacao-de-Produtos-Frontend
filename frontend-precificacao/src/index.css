@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  /* Substitua os valores abaixo pelas cores hexadecimais reais do seu projeto */
+  --color-background: #f5f5f5; /* Exemplo: cor de fundo cinza claro */
+  --color-text-primary: #333333; /* Exemplo: cor do texto cinza escuro */
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text-primary font-sans antialiased;
+  }
+}
