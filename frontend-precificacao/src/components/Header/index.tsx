@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-// Se não usar lucide-react, você pode substituir pelos ícones da sua biblioteca de preferência
+// 1. Importações do React Router
+import { Link, NavLink as RouterNavLink } from "react-router-dom";
+// 2. Removido o 'Link' daqui para evitar conflito
 import {
   DollarSign,
   BarChart2,
@@ -17,29 +19,31 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           {/* 1. LOGO */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
             <div className="bg-indigo-600 p-2 rounded-lg text-white flex items-center justify-center shadow-md shadow-indigo-100">
               <DollarSign className="w-5 h-5" />
             </div>
             <span className="font-bold text-xl tracking-tight text-slate-800">
               Precifica
             </span>
-          </div>
+          </Link>
 
           {/* 2. NAVEGAÇÃO DESKTOP */}
           <nav className="hidden md:flex space-x-1 items-center">
-            <NavLink href="#dashboard" active>
+            <CustomNavLink to="/ingredientes">
               <LayoutDashboard className="w-4 h-4" />
-              Dashboard
-            </NavLink>
-            <NavLink href="#ingredientes">
-              <Utensils className="w-4 h-4" />
               Ingredientes
-            </NavLink>
-            <NavLink href="#precificacao">
+            </CustomNavLink>
+
+            <CustomNavLink to="/produtos">
+              <Utensils className="w-4 h-4" />
+              Produtos
+            </CustomNavLink>
+
+            <CustomNavLink to="/precificacao">
               <BarChart2 className="w-4 h-4" />
               Margens & Custos
-            </NavLink>
+            </CustomNavLink>
           </nav>
 
           {/* 3. PERFIL / USUÁRIO (DIREITA) */}
@@ -74,11 +78,16 @@ export function Header() {
       {/* MENU MOBILE */}
       {isOpen && (
         <div className="md:hidden bg-white border-b border-slate-100 px-4 pt-2 pb-4 space-y-1 animate-fade-in">
-          <MobileNavLink href="#dashboard" active>
-            Dashboard
+          <MobileNavLink to="/ingredientes" onClick={() => setIsOpen(false)}>
+            Ingredientes
           </MobileNavLink>
-          <MobileNavLink href="#ingredientes">Ingredientes</MobileNavLink>
-          <MobileNavLink href="#precificacao">Margens & Custos</MobileNavLink>
+          <MobileNavLink to="/produtos" onClick={() => setIsOpen(false)}>
+            Produtos
+          </MobileNavLink>
+          <MobileNavLink to="/precificacao" onClick={() => setIsOpen(false)}>
+            Margens & Custos
+          </MobileNavLink>
+
           <div className="pt-4 border-t border-slate-100 flex items-center gap-3 px-3">
             <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium text-sm">
               FF
@@ -94,50 +103,53 @@ export function Header() {
   );
 }
 
-// Sub-componente auxiliar para os links no Desktop
-function NavLink({
-  href,
+// Sub-componente auxiliar para Desktop (Usa RouterNavLink para detectar rota ativa automaticamente)
+function CustomNavLink({
+  to,
   children,
-  active = false,
 }: {
-  href: string;
+  to: string;
   children: React.ReactNode;
-  active?: boolean;
 }) {
   return (
-    <a
-      href={href}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-        active
-          ? "bg-indigo-50 text-indigo-600"
-          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-      }`}
+    <RouterNavLink
+      to={to}
+      className={({ isActive }) =>
+        `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+          isActive
+            ? "bg-indigo-50 text-indigo-600"
+            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+        }`
+      }
     >
       {children}
-    </a>
+    </RouterNavLink>
   );
 }
 
-// Sub-componente auxiliar para os links no Mobile
+// Sub-componente auxiliar para Mobile
 function MobileNavLink({
-  href,
+  to,
   children,
-  active = false,
+  onClick,
 }: {
-  href: string;
+  to: string;
   children: React.ReactNode;
-  active?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <a
-      href={href}
-      className={`block px-3 py-2.5 rounded-lg text-base font-medium ${
-        active
-          ? "bg-indigo-50 text-indigo-600 font-semibold"
-          : "text-slate-600 hover:bg-slate-50"
-      }`}
+    <RouterNavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) =>
+        `block px-3 py-2.5 rounded-lg text-base font-medium ${
+          isActive
+            ? "bg-indigo-50 text-indigo-600 font-semibold"
+            : "text-slate-600 hover:bg-slate-50"
+        }`
+      }
     >
       {children}
-    </a>
+    </RouterNavLink>
   );
 }

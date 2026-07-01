@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import Manager from "./pages/manager";
+import Home from "../src/pages/Home";
 
 function App() {
   // --- ESTADOS DE AUTENTICAÇÃO ---
@@ -103,7 +103,7 @@ function App() {
       </div>
     );
   } else {
-    return <Manager />;
+    return <Home logout={lidarComLogout} />;
   }
 }
 
