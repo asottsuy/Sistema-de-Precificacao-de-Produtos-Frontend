@@ -40,9 +40,9 @@ export function Header() {
               Produtos
             </CustomNavLink>
 
-            <CustomNavLink to="/precificacao">
+            <CustomNavLink to="/painel-indicadores">
               <BarChart2 className="w-4 h-4" />
-              Margens & Custos
+              Painel Indicadores
             </CustomNavLink>
           </nav>
 
@@ -84,8 +84,11 @@ export function Header() {
           <MobileNavLink to="/produtos" onClick={() => setIsOpen(false)}>
             Produtos
           </MobileNavLink>
-          <MobileNavLink to="/precificacao" onClick={() => setIsOpen(false)}>
-            Margens & Custos
+          <MobileNavLink
+            to="/PainelIndicadores"
+            onClick={() => setIsOpen(false)}
+          >
+            Painel Indicadores
           </MobileNavLink>
 
           <div className="pt-4 border-t border-slate-100 flex items-center gap-3 px-3">

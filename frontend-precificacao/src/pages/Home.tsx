@@ -2,6 +2,7 @@ import { Header } from "../components/Header";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Ingredientes from "./Ingredientes";
 import Produtos from "./Produtos";
+import { PainelIndicadores } from "./PainelIndicadores";
 
 interface HomeProps {
   logout: () => void;
@@ -29,6 +30,10 @@ function Home({ logout }: HomeProps) {
             <Routes>
               <Route path="/ingredientes" element={<Ingredientes />} />
               <Route path="/produtos" element={<Produtos />} />
+              <Route
+                path="/painel-indicadores"
+                element={<PainelIndicadores />}
+              />
               {/* Rota padrão caso acesse a raiz / */}
               <Route path="*" element={<Ingredientes />} />
             </Routes>

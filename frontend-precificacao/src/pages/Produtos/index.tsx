@@ -119,20 +119,6 @@ function Produtos() {
         setCarregando(false);
       });
   }
-  async function buscarIngredienteID(id?: string | number) {
-    if (!id) return null;
-
-    setCarregando(true);
-    try {
-      const response = await api.get(`/ingredients/${id}`);
-      return response.data; // Retorna os dados do ingrediente diretamente para quem chamou
-    } catch (error) {
-      console.error("Erro ao buscar ingrediente:", error);
-      return null;
-    } finally {
-      setCarregando(false); // Executa SEMPRE, dando certo ou errado
-    }
-  }
 
   useEffect(() => {
     buscarIngredientes();
