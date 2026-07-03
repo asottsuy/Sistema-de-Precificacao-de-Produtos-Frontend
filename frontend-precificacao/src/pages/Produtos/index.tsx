@@ -12,15 +12,28 @@ interface Produto {
 export type ProdutoItem = {
   ingredientId: number;
   quantity: number;
+  ingredientCostPrice?: number;
+};
+
+type Ingrediente = {
+  id?: string;
+  name: string;
+  costPrice: number;
+  unit: string;
+  packageSize: number;
 };
 
 function Produtos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [produto, setProduto] = useState<Produto | undefined>(undefined);
+  const [selectedItems, setSelectedItems] = useState<ProdutoItem[]>([]);
   const [editProduto, setEditProduto] = useState<Produto | undefined>(
     undefined,
   );
+  const [idIngredienteSelecionado, setIdIngredienteSelecionado] =
+    useState<string>("");
 
   // --- REQUISIÇÕES DO SISTEMA ---
   function buscarProdutos() {
@@ -93,6 +106,38 @@ function Produtos() {
       });
   }
 
+  function buscarIngredientes() {
+    setCarregando(true);
+    api
+      .get("/ingredients")
+      .then((response) => {
+        setIngredientes(response.data);
+        setCarregando(false);
+      })
+      .catch((error) => {
+        console.error("Erro ao buscar ingredientes:", error);
+        setCarregando(false);
+      });
+  }
+  async function buscarIngredienteID(id?: string | number) {
+    if (!id) return null;
+
+    setCarregando(true);
+    try {
+      const response = await api.get(`/ingredients/${id}`);
+      return response.data; // Retorna os dados do ingrediente diretamente para quem chamou
+    } catch (error) {
+      console.error("Erro ao buscar ingrediente:", error);
+      return null;
+    } finally {
+      setCarregando(false); // Executa SEMPRE, dando certo ou errado
+    }
+  }
+
+  useEffect(() => {
+    buscarIngredientes();
+  }, []);
+
   return (
     <div className="mx-auto max-w-2xl p-6">
       <section className="mb-8 rounded-lg border border-gray-300 p-4 bg-white shadow-sm">
@@ -132,7 +177,7 @@ function Produtos() {
           <input
             type="text"
             placeholder="Descrição"
-            value={produto?.description || 0}
+            value={produto?.description || ""}
             onChange={(e) =>
               setProduto((prev) => ({
                 name: prev?.name || "",
@@ -143,6 +188,175 @@ function Produtos() {
             }
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
+          {/* select de ingredientes */}
+          <select
+            value=""
+            onChange={(e) => {
+              const ingredienteId = e.target.value;
+
+              const ingredienteEscolhido = ingredientes.find(
+                (ing) => ing.id == ingredienteId,
+              );
+              if (!ingredienteEscolhido) return;
+
+              // 3. Evita duplicados convertendo para número para bater com o ProdutoItem
+              const idNum = Number(ingredienteEscolhido.id);
+              const jaAdicionado = produto?.items?.some(
+                (item) => item.ingredientId === idNum,
+              );
+
+              if (jaAdicionado) {
+                alert("Este ingrediente já foi adicionado!");
+                return;
+              }
+
+              // 4. Cria o item seguindo estritamente a tipagem ProdutoItem
+              const novoItem: ProdutoItem = {
+                ingredientId: idNum,
+                quantity: 0,
+              };
+
+              console.log("novoItem: ", novoItem);
+
+              setProduto((prev) => {
+                if (!prev) {
+                  return {
+                    name: "",
+                    description: "",
+                    salePrice: 0,
+                    items: [novoItem],
+                  };
+                }
+
+                return {
+                  ...prev,
+                  items: [...(prev.items || []), novoItem],
+                };
+              });
+            }}
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="" disabled>
+              Selecione um ingrediente para adicionar...
+            </option>
+            {ingredientes.map((ingrediente) => (
+              <option key={ingrediente.id} value={ingrediente.id}>
+                {ingrediente.name}
+              </option>
+            ))}
+          </select>
+          <div className="mt-4 space-y-2">
+            {produto?.items?.length === 0 ? (
+              <p className="text-sm text-gray-500 italic">
+                Nenhum ingrediente selecionado ainda.
+              </p>
+            ) : (
+              produto?.items?.map((item, index) => {
+                // Cruza o ID para descobrir os detalhes (nome e unidade) do ingrediente
+                const dadosIngrediente = ingredientes.find(
+                  (ing) => Number(ing.id) == item.ingredientId,
+                );
+
+                // Função auxiliar para atualizar a quantidade com segurança
+                const atualizarQuantidade = (valor: number) => {
+                  // Evita que a quantidade seja menor que zero
+                  const novaQuantidade = Math.max(0, valor);
+
+                  setProduto((prev) => {
+                    if (!prev) return prev;
+                    const novosItems = [...prev.items];
+                    novosItems[index] = {
+                      ...novosItems[index],
+                      quantity: novaQuantidade,
+                    };
+                    return { ...prev, items: novosItems };
+                  });
+                };
+
+                return (
+                  <div
+                    key={item.ingredientId}
+                    className="flex items-center justify-between gap-4 bg-gray-50 p-3 rounded-md border border-gray-200 hover:shadow-sm transition-shadow"
+                  >
+                    {/* 1. Visualização do Nome */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {dadosIngrediente?.name || "Ingrediente não encontrado"}
+                      </p>
+                      {/* <p className="text-xs text-gray-500">
+                        Preço base: R$ {dadosIngrediente?.costPrice.toFixed(2)}{" "}
+                        por {dadosIngrediente?.packageSize}
+                        {dadosIngrediente?.unit}
+                      </p> */}
+                    </div>
+
+                    {/* 2. Controles de Quantidade e Unidade */}
+                    <div className="flex items-center gap-2">
+                      {/* Botão de Diminuir (-) */}
+                      <button
+                        type="button"
+                        onClick={() => atualizarQuantidade(item.quantity - 0.1)}
+                        className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 text-gray-600 rounded-md hover:bg-gray-100 active:bg-gray-200 font-bold transition-colors"
+                      >
+                        -
+                      </button>
+
+                      {/* Input Centralizado */}
+                      <div className="relative flex items-center">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={item.quantity === 0 ? "" : item.quantity}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const valorInput = e.target.value;
+                            atualizarQuantidade(
+                              valorInput === "" ? 0 : Number(valorInput),
+                            );
+                          }}
+                          className="w-20 h-8 rounded-md border border-gray-300 text-center text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
+
+                      {/* Botão de Aumentar (+) */}
+                      <button
+                        type="button"
+                        onClick={() => atualizarQuantidade(item.quantity + 0.1)}
+                        className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 text-gray-600 rounded-md hover:bg-gray-100 active:bg-gray-200 font-bold transition-colors"
+                      >
+                        +
+                      </button>
+
+                      {/* Badge de Unidade de Medida */}
+                      <span className="text-sm font-medium text-gray-500 w-8 text-left ml-1">
+                        {dadosIngrediente?.unit || "g"}
+                      </span>
+                    </div>
+
+                    {/* 3. Botão de Remover */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProduto((prev) => {
+                          if (!prev) return prev;
+                          return {
+                            ...prev,
+                            items: prev.items.filter((_, i) => i !== index),
+                          };
+                        });
+                      }}
+                      className="text-red-500 hover:text-red-700 p-2 text-sm font-medium rounded-md hover:bg-red-50 transition-colors"
+                      title="Remover ingrediente"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
           <button
             type="submit"
             className="rounded-md bg-blue-600 px-5 text-xl font-bold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -152,95 +366,140 @@ function Produtos() {
         </form>
       </section>
 
-      {/* {editProduto&& (
+      {editProduto && (
         <section className="mb-8 rounded-lg border border-gray-300 p-4 bg-amber-100 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-gray-800">
-            Cadastrar Novo produto
+            Editar Produto
           </h3>
           <form
             onSubmit={salvarEdicao}
-            className="flex flex-col gap-3 mt-4 p-4 border border-amber-200 bg-amber-50/50 rounded-xl animate-fade-in"
+            className="flex flex-col gap-4 mt-4 p-4 border border-amber-200 bg-amber-50/50 rounded-xl animate-fade-in"
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-amber-800">
-                Editando:{" "}
-                <span className="underline">{editIngrediente.name}</span>
+                Editando: <span className="underline">{editProduto.name}</span>
               </span>
               <button
                 type="button"
-                onClick={() => setEditIngrediente(undefined)}
+                onClick={() => setEditProduto(undefined)}
                 className="text-xs font-semibold text-amber-700 hover:text-amber-900 underline"
               >
                 Cancelar Edição
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <input
-                type="text"
-                placeholder="Nome"
-                value={editIngrediente.name}
-                onChange={(e) =>
-                  setEditIngrediente((prev) => ({
-                    ...prev!,
-                    name: e.target.value,
-                  }))
-                }
-                className="rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
+            <div className="flex flex-col gap-3">
+              {/* Campo: Nome do Produto */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-700">
+                  Nome do Produto
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Bolo de Chocolate"
+                  value={editProduto.name || ""}
+                  onChange={(e) =>
+                    setEditProduto((prev) => ({
+                      ...prev!,
+                      name: e.target.value,
+                    }))
+                  }
+                  className="rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
 
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Custo R$"
-                value={editIngrediente.costPrice || ""}
-                onChange={(e) =>
-                  setEditIngrediente((prev) => ({
-                    ...prev!,
-                    costPrice: Number(e.target.value),
-                  }))
-                }
-                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-              <select
-                value={editIngrediente.unit}
-                onChange={(e) =>
-                  setEditIngrediente((prev) => ({
-                    ...prev!,
-                    unit: e.target.value,
-                  }))
-                }
-                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-amber-500 focus:outline-none"
-              >
-                <option value="kg">kg</option>
-                <option value="g">g</option>
-                <option value="l">l</option>
-                <option value="ml">ml</option>
-                <option value="un">un</option>
-              </select>
+              {/* Campo: Descrição */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-700">
+                  Descrição
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Bolo artesanal com cobertura de brigadeiro"
+                  value={editProduto.description || ""}
+                  onChange={(e) =>
+                    setEditProduto((prev) => ({
+                      ...prev!,
+                      description: e.target.value,
+                    }))
+                  }
+                  className="rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
 
-              <input
-                type="number"
-                placeholder="Qtd. Embalagem"
-                value={editIngrediente.packageSize}
-                onChange={(e) =>
-                  setEditIngrediente((prev) => ({
-                    ...prev!,
-                    packageSize: Number(e.target.value),
-                  }))
-                }
-                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
+              {/* Seção: Itens / Ingredientes do Produto */}
+              <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3">
+                <h4 className="mb-2 text-sm font-bold text-gray-700 border-b pb-1">
+                  Ingredientes / Itens do Produto
+                </h4>
+
+                {editProduto.items && editProduto.items.length > 0 ? (
+                  <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                    {editProduto.items.map((item, index) => {
+                      const ingAtual = ingredientes.find(
+                        (ingrediente) =>
+                          Number(ingrediente.id) === item.ingredientId,
+                      );
+                      return (
+                        <div
+                          key={item.ingredientId || index}
+                          className="flex items-center gap-2 justify-between bg-gray-50 p-2 rounded border border-gray-200"
+                        >
+                          {/* Nome do ingrediente (geralmente vindo de um relacionamento populado no backend, ex: item.ingredient.name) */}
+                          <span className="text-sm font-medium text-gray-700 flex-1 truncate">
+                            {ingAtual?.name ||
+                              ingAtual?.name ||
+                              `Item #${index + 1}`}
+                          </span>
+
+                          {/* Input para editar a quantidade usada desse ingrediente no produto */}
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              step="0.001"
+                              placeholder="Qtd"
+                              value={item.quantity || ""}
+                              onChange={(e) => {
+                                const novasQuantidades = [
+                                  ...(editProduto.items || []),
+                                ];
+                                novasQuantidades[index] = {
+                                  ...novasQuantidades[index],
+                                  quantity: Number(e.target.value),
+                                };
+                                setEditProduto((prev) => ({
+                                  ...prev!,
+                                  items: novasQuantidades,
+                                }));
+                              }}
+                              className="w-24 rounded border border-gray-300 px-2 py-1 text-right text-sm text-gray-900 focus:border-amber-500 focus:outline-none"
+                            />
+                            <span className="text-xs text-gray-500 w-6">
+                              {ingAtual?.unit || ingAtual?.unit || "un"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 italic py-2">
+                    Nenhum ingrediente vinculado a este produto.
+                  </p>
+                )}
+              </div>
+
+              {/* Botão de Salvar */}
               <button
                 type="submit"
-                className="rounded-md bg-amber-600 px-5 text-sm font-bold text-white transition-colors hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="rounded-md bg-amber-600 py-2.5 px-5 text-sm font-bold text-white transition-colors hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 mt-2 shadow-sm"
               >
-                Salvar
+                Salvar Alterações
               </button>
             </div>
           </form>
         </section>
-      )} */}
+      )}
 
       {/* Listagem */}
       <section className="rounded-lg bg-white p-4 border border-gray-200 shadow-sm">
@@ -277,6 +536,46 @@ function Produtos() {
                   <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-medium">
                     Descrição: {produtoItem.description}
                   </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {produtoItem.items.map((ing, index) => {
+                    const ingAtual = ingredientes.find(
+                      (ingrediente) =>
+                        Number(ingrediente.id) === ing.ingredientId,
+                    );
+
+                    return (
+                      <span
+                        key={ing.ingredientId} // Garante a performance e estabilidade do React
+                        className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-md text-xs font-medium shadow-sm"
+                      >
+                        {/* Nome do Ingrediente */}
+                        <span className="text-slate-800 font-semibold">
+                          {ingAtual?.name || "Ingrediente desconhecido"}
+                        </span>
+
+                        {/* Divisor minimalista */}
+                        <span className="text-slate-300">•</span>
+
+                        {/* Quantidade e Unidade formatadas */}
+                        <span className="text-slate-500 font-normal">
+                          {ing.quantity}
+                          <span className="text-slate-400 font-medium ml-0.5">
+                            {ingAtual?.unit || "g"}
+                          </span>
+                        </span>
+                        <span className="text-slate-300">•</span>
+
+                        {/* Quantidade e Unidade formatadas */}
+                        <span className="text-slate-500 font-normal">
+                          <span className="text-slate-400 font-medium ml-0.5">
+                            R$
+                          </span>
+                          {produtoItem.items[index]?.ingredientCostPrice}
+                        </span>
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
